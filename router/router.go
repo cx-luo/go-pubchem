@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	_ "go-pubchem/docs"
 	"go-pubchem/src"
 	"go-pubchem/utils"
 	"net/http"
@@ -71,32 +72,32 @@ var routes = Routes{
 	{
 		"GetCidFromSmiles",
 		http.MethodPost,
-		"/api/pug/getCidFromSmiles",
+		"/api/v1/pug/getCidFromSmiles",
 		src.GetCidFromSmiles,
 	},
 	{
 		"InsertToDbByCid",
 		http.MethodPost,
-		"/api/insertToDbByCid",
+		"/api/v1/db/insertToDbByCid",
 		src.InsertToDbByCid,
 	},
 
 	{
 		"GetCidFromName",
 		http.MethodPost,
-		"/api/pug/getCidFromName",
+		"/api/v1/pug/getCidFromName",
 		src.GetCidFromName,
 	},
 	{
 		"GetCmpdWithCasFromCid",
 		http.MethodPost,
-		"/api/getCmpdWithCasFromCid",
+		"/api/v1/query/getCmpdWithCasFromCid",
 		src.GetCmpdWithCasFromCid,
 	},
 	{
 		"GetCmpdFromQueryLimit",
 		http.MethodPost,
-		"/api/query/getCmpdFromQueryLimit",
+		"/api/v1/query/getCmpdFromQueryLimit",
 		src.GetCmpdFromQueryLimit,
 	},
 }

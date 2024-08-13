@@ -70,6 +70,18 @@ var sema = toolkit.NewSemaphore(40)
 //	Fingerprint2D:            "Fingerprint2D",
 //}
 
+type CmpdName struct {
+	Name string `json:"name"`
+}
+
+type CmpdSmiles struct {
+	Smiles string `json:"smiles"`
+}
+
+type CmpdCid struct {
+	Cid int `json:"cid"`
+}
+
 // fetchURL 用来设置代理ip的
 func fetchURL(parseurl string) (string, error) {
 	// 创建一个自定义的 Transport 实例
@@ -151,13 +163,21 @@ func urlGet(epUrl string) []byte {
 	return bodyText
 }
 
+// GetCidFromSmiles
+// @Summary GetCidFromSmiles 从smiles查询cid
+// @Description 从smiles查询cid，在返回结果前会把结果写入数据库
+// @Tags pug
+// @Accept json
+// @Param smiles body CmpdSmiles true "smiles"
+// @Success 200 {string} string "{"msg": "hello wy"}"
+// @Failure 400 {string} string "{"msg": "who are you"}"
+// @Router /pug/getCidFromSmiles [post]
 func GetCidFromSmiles(c *gin.Context) {
-	var s struct {
-		Smiles string `json:"smiles"`
-	}
+	var s CmpdSmiles
 	err := c.ShouldBind(&s)
 	if err != nil {
 		utils.BadRequestErr(c, err)
+		return
 	}
 	curl := fmt.Sprintf("https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/%s/cids/json", s.Smiles)
 	res := urlGet(curl)
@@ -169,15 +189,19 @@ func GetCidFromSmiles(c *gin.Context) {
 	var idenCids IdentifierList
 	if res == nil {
 		utils.OkRequestWithData(c, "", gin.H{"total": 0, "list": nil})
+		return
 	}
 	err = json.Unmarshal(res, &idenCids)
 	if err != nil {
 		utils.InternalRequestErr(c, err)
+		return
 	}
 	if len(idenCids.IdentifierList.Cid) >= 1 && idenCids.IdentifierList.Cid[0] != 0 {
 		utils.OkRequestWithData(c, "", gin.H{"total": len(idenCids.IdentifierList.Cid), "list": idenCids.IdentifierList.Cid})
+		return
 	}
 	utils.OkRequest(c, "not found")
+	return
 }
 
 func GetCIDFromInChi(inChi string) int {
@@ -188,14 +212,21 @@ func GetCIDFromInChiKey(inChiKey string) int {
 	return 0
 }
 
-// GetCidFromName insert results to db . If the cid is unique, return the cid, else return nil
+// GetCidFromName
+// @Summary GetCidFromName 从name查询cid
+// @Description insert results to db . If the cid is unique, return the cid, else return nil
+// @Tags pug
+// @Accept json
+// @Param name body CmpdName true "化合物名称"
+// @Success 200 {string} string "{"msg": "hello wy"}"
+// @Failure 400 {string} string "{"msg": "who are you"}"
+// @Router /pug/getCidFromName [post]
 func GetCidFromName(c *gin.Context) {
-	var s struct {
-		Name string `json:"name"`
-	}
+	var s CmpdName
 	err := c.ShouldBind(&s)
 	if err != nil {
 		utils.BadRequestErr(c, err)
+		return
 	}
 
 	type CIDs struct {
@@ -213,11 +244,13 @@ func GetCidFromName(c *gin.Context) {
 	res := urlGet(curl)
 	if res == nil {
 		utils.OkRequestWithData(c, "", gin.H{"total": 0, "list": nil})
+		return
 	}
 
 	err = json.Unmarshal(res, &cIds)
 	if err != nil {
 		utils.InternalRequestErr(c, err)
+		return
 	}
 
 	// 把查询到的结果写到数据库里
@@ -226,33 +259,44 @@ func GetCidFromName(c *gin.Context) {
 		err = InsertSDQToDB(&sqdSet)
 		if err != nil {
 			utils.InternalRequestErr(c, err)
+			return
 		}
 	}
 
 	if len(cIds.ConceptsAndCIDs.CID) == 1 {
 		utils.OkRequestWithData(c, "", gin.H{"total": 1, "list": cIds.ConceptsAndCIDs.CID})
+		return
 	}
 
 	utils.OkRequestWithData(c, "", gin.H{"total": 0, "list": nil})
+	return
 }
 
 // InsertToDbByCid
-// insert compound info to db by cid
+// @Summary InsertToDbByCid 把对应Cid的数据写入数据库
+// @Description insert compound info to db by cid
+// @Tags db
+// @Accept json
+// @Param cid body CmpdCid true "Cid"
+// @Success 200 {string} string "{"msg": "hello wy"}"
+// @Failure 400 {string} string "{"msg": "who are you"}"
+// @Router /db/insertToDbByCid [post]
 func InsertToDbByCid(c *gin.Context) {
-	var s struct {
-		Cid int `json:"cid"`
-	}
+	var s CmpdCid
 	err := c.ShouldBind(&s)
 	if err != nil {
 		utils.BadRequestErr(c, err)
+		return
 	}
-	sqdSet := GetSDQOutputSetFromCid(s.Cid, 10, 1).SDQOutputSet
+	sqdSet := GetSDQOutputSetFromCid(s.Cid, 1, 1).SDQOutputSet
 	err = InsertSDQToDB(&sqdSet)
 	if err != nil {
 		utils.InternalRequestErr(c, err)
+		return
 	}
 
 	utils.OkRequest(c, "Success")
+	return
 }
 
 func getCasByRegexp(s string) []string {
@@ -290,13 +334,21 @@ type usedCmpd struct {
 	Rows       []usedRows `json:"rows"`
 }
 
+// GetCmpdWithCasFromCid
+// @Summary GetCmpdWithCasFromCid 从cid获取化合物信息
+// @Description 从cid获取化合物信息，返回列表
+// @Tags query
+// @Accept json
+// @Param cid body CmpdCid true "Cid"
+// @Success 200 {string} string "{"total": 0, "list": []}"
+// @Failure 400 {string} string "{"msg": "who are you"}"
+// @Router /query/getCmpdWithCasFromCid [post]
 func GetCmpdWithCasFromCid(c *gin.Context) {
-	var s struct {
-		Cid int `json:"cid"`
-	}
+	var s CmpdCid
 	err := c.ShouldBind(&s)
 	if err != nil {
 		utils.BadRequestErr(c, err)
+		return
 	}
 	var compounds []usedRows
 	sqdSet := GetSDQOutputSetFromCid(s.Cid, 10, 1).SDQOutputSet
@@ -321,6 +373,7 @@ func GetCmpdWithCasFromCid(c *gin.Context) {
 		compounds = append(compounds, u)
 	}
 	utils.OkRequestWithData(c, "", gin.H{"total": len(compounds), "list": compounds})
+	return
 }
 
 /*
@@ -685,14 +738,21 @@ func updateTableBySql(cid int, cName string, sqlStr string) error {
 3. TODO 如果也查询不到，换一种方式
 */
 
-// GetCmpdFromQueryLimit 获取不那么准的信息，并写入表里，返回前10个查询结果
+// GetCmpdFromQueryLimit
+// @Summary GetCmpdFromQueryLimit 从query获取化合物信息
+// @Description 获取不那么准的信息，并写入表里，返回前10个查询结果
+// @Tags query
+// @Accept json
+// @Param name body CmpdName true "化合物名称"
+// @Success 200 {string} string "{"statusCode":200,"msg":"","data":{"list":[168478138],"total":1}}"
+// @Failure 400 {string} string "{"statusCode":400,"msg":"error!"}"
+// @Router /query/getCmpdFromQueryLimit [post]
 func GetCmpdFromQueryLimit(c *gin.Context) {
-	var s struct {
-		Name string `json:"name"`
-	}
+	var s CmpdName
 	err := c.ShouldBind(&s)
 	if err != nil {
 		utils.BadRequestErr(c, err)
+		return
 	}
 	//err := tagProcessed(cName)
 	//if err != nil {
@@ -714,6 +774,7 @@ func GetCmpdFromQueryLimit(c *gin.Context) {
 	sqdSet := GetSDQOutputSetFromQuery(s.Name, 1000, 1).SDQOutputSet
 	if sqdSet == nil {
 		utils.OkRequestWithData(c, "", gin.H{"total": 0, "list": nil})
+		return
 	}
 	totalCount := sqdSet[0].TotalCount
 	switch {
@@ -727,6 +788,7 @@ func GetCmpdFromQueryLimit(c *gin.Context) {
 		err := InsertSDQToDB(&sqdSet)
 		if err != nil {
 			utils.InternalRequestErr(c, err)
+			return
 		}
 
 		utils.OkRequestWithData(c, "", gin.H{"total": totalCount, "list": sqdSet[:10]})
@@ -737,6 +799,7 @@ func GetCmpdFromQueryLimit(c *gin.Context) {
 			err := InsertSDQToDB(&sqdSet)
 			if err != nil {
 				utils.InternalRequestErr(c, err)
+				return
 			}
 		}
 
@@ -744,9 +807,12 @@ func GetCmpdFromQueryLimit(c *gin.Context) {
 		err := InsertSDQToDB(&sqdSet)
 		if err != nil {
 			utils.InternalRequestErr(c, err)
+			return
 		}
 		utils.OkRequestWithData(c, "", gin.H{"total": totalCount, "list": sqdSet[:10]})
+		return
 	}
+	return
 }
 
 func randomInt(min, max int64) int64 {

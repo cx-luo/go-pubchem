@@ -34,7 +34,7 @@ func OkRequest(c *gin.Context, msg string) {
 }
 
 func InternalRequestErr(c *gin.Context, err error) {
-	Logger.Error(err)
+	pkg.Logger.Error(err)
 	c.JSON(http.StatusInternalServerError, ResponseData{
 		StatusCode: 500, Msg: err.Error(), Data: gin.H{},
 	})

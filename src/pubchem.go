@@ -220,6 +220,7 @@ func GetCidFromName(c *gin.Context) {
 		utils.InternalRequestErr(c, err)
 	}
 
+	// 把查询到的结果写到数据库里
 	for _, cid := range cIds.ConceptsAndCIDs.CID {
 		sqdSet := GetSDQOutputSetFromCid(cid, 10, 1).SDQOutputSet
 		err = InsertSDQToDB(&sqdSet)
@@ -630,10 +631,7 @@ func (s *SDQSet) InsertCompoundsToDB() error {
 				if err != nil {
 					return err
 				}
-				_, err = dao.MysqlCursor.Exec(`update test.lcx_01catalyst_all_unique set cid = ?,mw = ?, mf = ?, smiles = ? where cid = ?`, c.Cid, c.Mw, c.Mf, c.Canonicalsmiles, c.Cid)
-				if err != nil {
-					return err
-				}
+
 				return nil
 			}(row)
 			if err != nil {
@@ -687,7 +685,15 @@ func updateTableBySql(cid int, cName string, sqlStr string) error {
 3. TODO 如果也查询不到，换一种方式
 */
 
-func GetCompoundInfo(c *gin.Context) error {
+// GetCmpdFromQueryLimit 获取不那么准的信息，并写入表里，返回前10个查询结果
+func GetCmpdFromQueryLimit(c *gin.Context) {
+	var s struct {
+		Name string `json:"name"`
+	}
+	err := c.ShouldBind(&s)
+	if err != nil {
+		utils.BadRequestErr(c, err)
+	}
 	//err := tagProcessed(cName)
 	//if err != nil {
 	//	return err
@@ -702,71 +708,45 @@ func GetCompoundInfo(c *gin.Context) error {
 
 	//return nil
 	//}
-	//if len(cid) > 1 {
-	//	sqlStr := `update enotess.suzuki_to_std_base254 set possible_cid = ? where standardized_name = ? and cid = 0`
-	//	affect, err := dao.MysqlCursor.Exec(sqlStr, fmt.Sprintf("{cid: %v}", cid), cName)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	rowsAffected, _ := affect.RowsAffected()
-	//	pkg.Logger.Info("Affected rows : %d, %s, %d, %s", rowsAffected, sqlStr, cid, cName)
-
-	//_, err = dao.MysqlCursor.Exec(`update enotess.buchwald_reactants_all set is_processed = is_processed + 1 where cd_smiles = ?`, cName)
-	//if err != nil {
-	//	panic(err)
-	//}
-
-	//return nil
-	//}
 
 	// 如果cid为0，说明可能没查出来。换一种方式，可以通过GetSDQOutputSetFromQuery去查询
 	// 先获取一千条，一般来说，不会大于1000条，pubchem允许获取单次最大10000.
-	sqdSet := GetSDQOutputSetFromQuery(cName, 1000, 1).SDQOutputSet
+	sqdSet := GetSDQOutputSetFromQuery(s.Name, 1000, 1).SDQOutputSet
 	if sqdSet == nil {
-		return nil
+		utils.OkRequestWithData(c, "", gin.H{"total": 0, "list": nil})
 	}
 	totalCount := sqdSet[0].TotalCount
 	switch {
 	case totalCount == 0:
-		pkg.Logger.Info("Don't find,compound name : %s.", cName)
-		return nil
+		pkg.Logger.Info("Don't find,compound name : %s.", s.Name)
+		utils.OkRequestWithData(c, "", gin.H{"total": 0, "list": nil})
+		return
 
 	case totalCount > 1000:
 		// 先把当前的一千条写入
 		err := InsertSDQToDB(&sqdSet)
 		if err != nil {
-			return err
+			utils.InternalRequestErr(c, err)
 		}
 
-		cid = sqdSet[0].Rows[0].Cid
-		err = updateTableBySql(cid, cName)
-		if err != nil {
-			return err
-		}
-
+		utils.OkRequestWithData(c, "", gin.H{"total": totalCount, "list": sqdSet[:10]})
 		// 获取一千条之后的，再次写入
 		cnt := math.Ceil(float64(totalCount) / 1000)
 		for i := 1; i < int(cnt); i++ {
-			sqdSet := GetSDQOutputSetFromQuery(cName, 1000, i*1000+1).SDQOutputSet
+			sqdSet := GetSDQOutputSetFromQuery(s.Name, 1000, i*1000+1).SDQOutputSet
 			err := InsertSDQToDB(&sqdSet)
 			if err != nil {
-				return err
+				utils.InternalRequestErr(c, err)
 			}
 		}
 
 	default:
 		err := InsertSDQToDB(&sqdSet)
 		if err != nil {
-			return err
+			utils.InternalRequestErr(c, err)
 		}
-		cid := sqdSet[0].Rows[0].Cid
-		err = updateTableBySql(cid, cName)
-		if err != nil {
-			return err
-		}
+		utils.OkRequestWithData(c, "", gin.H{"total": totalCount, "list": sqdSet[:10]})
 	}
-
-	return nil
 }
 
 func randomInt(min, max int64) int64 {

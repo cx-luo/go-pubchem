@@ -94,9 +94,9 @@ var routes = Routes{
 		src.GetCmpdWithCasFromCid,
 	},
 	{
-		"GetCidFromName",
+		"GetCmpdFromQueryLimit",
 		http.MethodPost,
-		"/api/getCidFromName",
-		src.GetCidFromName,
+		"/api/query/getCmpdFromQueryLimit",
+		src.GetCmpdFromQueryLimit,
 	},
 }

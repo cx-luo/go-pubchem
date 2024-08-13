@@ -2,14 +2,11 @@ package main
 
 import (
 	_ "github.com/go-sql-driver/mysql"
-	toolkit "github.com/netluo/go-toolkit"
 	"go-pubchem/pkg"
 	"go-pubchem/router"
 	"math/rand"
 	"time"
 )
-
-var Sema = toolkit.NewSemaphore(20)
 
 // var parsedNames []string
 // var unparsedNames []string

@@ -809,7 +809,7 @@ func GetCmpdFromQueryLimit(c *gin.Context) {
 			utils.InternalRequestErr(c, err)
 			return
 		}
-		utils.OkRequestWithData(c, "", gin.H{"total": totalCount, "list": sqdSet[:10]})
+		utils.OkRequestWithData(c, "", gin.H{"total": totalCount, "list": sqdSet[0].Rows[:10]})
 		return
 	}
 	return
@@ -888,4 +888,72 @@ func calculateChecksum(cas string) bool {
 	}
 
 	return checksum == atoi
+}
+
+// PubChemURLBuilder 结构用于构建PubChem API的URL
+type PubChemURLBuilder struct {
+	Prefix     string
+	InputSpec  string
+	Operation  string
+	OutputSpec string
+	Options    url.Values
+}
+
+// NewPubChemURLBuilder 初始化并返回一个新的PubChemURLBuilder实例
+func NewPubChemURLBuilder() *PubChemURLBuilder {
+	return &PubChemURLBuilder{
+		Prefix:  "https://pubchem.ncbi.nlm.nih.gov/rest/pug/",
+		Options: url.Values{},
+	}
+}
+
+// SetInputSpec 设置输入规格
+func (b *PubChemURLBuilder) SetInputSpec(domain, namespace, identifiers string) {
+	b.InputSpec = fmt.Sprintf("%s/%s/%s", domain, namespace, identifiers)
+}
+
+// SetOperation 设置操作规格
+func (b *PubChemURLBuilder) SetOperation(operation string) {
+	b.Operation = operation
+}
+
+// SetOutputSpec 设置输出规格
+func (b *PubChemURLBuilder) SetOutputSpec(output string) {
+	b.OutputSpec = output
+}
+
+// AddOption 添加操作选项
+func (b *PubChemURLBuilder) AddOption(key, value string) {
+	b.Options.Add(key, value)
+}
+
+// BuildURL 构建并返回完整的URL
+func (b *PubChemURLBuilder) BuildURL() string {
+	urlPath := fmt.Sprintf("%s/%s/%s/%s", b.Prefix, b.InputSpec, b.Operation, b.OutputSpec)
+	if b.Options.Encode() != "" {
+		urlPath += "?" + b.Options.Encode()
+	}
+	return urlPath
+}
+
+func BuildUrl(c *gin.Context) {
+	// 创建一个新的URL构建器实例
+	builder := NewPubChemURLBuilder()
+
+	// 设置输入规格，例如compound domain的CID
+	builder.SetInputSpec("compound", "cid", "1234,5678")
+
+	// 设置操作规格，例如获取化合物信息
+	builder.SetOperation("view")
+
+	// 设置输出规格，例如JSON格式
+	builder.SetOutputSpec("json")
+
+	// 添加一些操作选项
+	builder.AddOption("response_type", "json")
+	builder.AddOption("relaxed_query", "true")
+
+	// 构建并打印最终的URL
+	finalURL := builder.BuildURL()
+	fmt.Println(finalURL)
 }

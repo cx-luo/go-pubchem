@@ -35,7 +35,7 @@ func randomInt(min, max int64) int64 {
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 
-// @host 127.0.0.1:8100
+// @host 192.168.21.94:8100
 // @BasePath /api/v1
 func main() {
 	r := router.NewRouter("./go-pubchem.log", "INFO")

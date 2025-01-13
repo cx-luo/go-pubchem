@@ -10,7 +10,6 @@ import (
 	"go-pubchem/utils"
 	"io"
 	"io/ioutil"
-	"math"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -700,6 +699,14 @@ func InsertSDQToDB(s *[]SDQSet) error {
 	return nil
 }
 
+// 辅助函数，用于安全地取最小值
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 /*
 	GetCompoundInfo
 
@@ -735,38 +742,38 @@ func GetCmpdFromQueryLimit(c *gin.Context) {
 	totalCount := sqdSet[0].TotalCount
 	switch {
 	case totalCount == 0:
-		pkg.Logger.Info("Don't find,compound name : %s.", s.Name)
+		pkg.Logger.Info("No results found for compound name: %s", s.Name)
 		utils.OkRequestWithData(c, "", gin.H{"total": 0, "list": nil})
 		return
 
 	case totalCount > 1000:
-		// 先把当前的一千条写入
-		err := InsertSDQToDB(&sqdSet)
-		if err != nil {
+		// 处理前1000条记录
+		if err := InsertSDQToDB(&sqdSet); err != nil {
 			utils.InternalRequestErr(c, err)
 			return
 		}
 
-		utils.OkRequestWithData(c, "", gin.H{"total": totalCount, "list": sqdSet[:10]})
-		// 获取一千条之后的，再次写入
-		cnt := math.Ceil(float64(totalCount) / 1000)
-		for i := 1; i < int(cnt); i++ {
-			sqdSet := GetSDQOutputSetFromQuery(s.Name, 1000, i*1000+1).SDQOutputSet
-			err := InsertSDQToDB(&sqdSet)
-			if err != nil {
+		utils.OkRequestWithData(c, "", gin.H{"total": totalCount, "list": sqdSet[:min(len(sqdSet), 10)]})
+
+		// 处理剩余的记录
+		for i := 1; i*1000 < totalCount; i++ {
+			offset := i * 1000
+			batch := GetSDQOutputSetFromQuery(s.Name, min(1000, totalCount-offset), offset+1).SDQOutputSet
+			if len(batch) == 0 { // 如果没有更多的数据，提前结束循环
+				break
+			}
+			if err := InsertSDQToDB(&batch); err != nil {
 				utils.InternalRequestErr(c, err)
 				return
 			}
 		}
 
 	default:
-		err := InsertSDQToDB(&sqdSet)
-		if err != nil {
+		if err := InsertSDQToDB(&sqdSet); err != nil {
 			utils.InternalRequestErr(c, err)
 			return
 		}
-		utils.OkRequestWithData(c, "", gin.H{"total": totalCount, "list": sqdSet[0].Rows[:10]})
-		return
+		utils.OkRequestWithData(c, "", gin.H{"total": totalCount, "list": sqdSet[:min(len(sqdSet), 10)]})
 	}
 	return
 }

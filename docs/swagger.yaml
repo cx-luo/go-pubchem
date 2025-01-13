@@ -22,7 +22,7 @@ definitions:
       tableName:
         type: string
     type: object
-host: 127.0.0.1:8100
+host: 192.168.21.94:8100
 info:
   contact:
     email: andrew.luo1992@gmile.com

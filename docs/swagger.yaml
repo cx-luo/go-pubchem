@@ -15,6 +15,13 @@ definitions:
       smiles:
         type: string
     type: object
+  src.DbAndTableName:
+    properties:
+      dbName:
+        type: string
+      tableName:
+        type: string
+    type: object
 host: 127.0.0.1:8100
 info:
   contact:
@@ -29,6 +36,30 @@ info:
   title: Golang go-pubchem APIs
   version: "1.0"
 paths:
+  /db/fillNullValue:
+    post:
+      consumes:
+      - application/json
+      description: insert compound info to db by cid
+      parameters:
+      - description: Cid
+        in: body
+        name: cid
+        required: true
+        schema:
+          $ref: '#/definitions/src.DbAndTableName'
+      responses:
+        "200":
+          description: '{"msg": "hello wy"}'
+          schema:
+            type: string
+        "400":
+          description: '{"msg": "who are you"}'
+          schema:
+            type: string
+      summary: FillNullValue 填充表的 null 值
+      tags:
+      - db
   /db/insertToDbByCid:
     post:
       consumes:

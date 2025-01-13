@@ -24,6 +24,43 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/db/fillNullValue": {
+            "post": {
+                "description": "insert compound info to db by cid",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "db"
+                ],
+                "summary": "FillNullValue 填充表的 null 值",
+                "parameters": [
+                    {
+                        "description": "Cid",
+                        "name": "cid",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src.DbAndTableName"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{\"msg\": \"hello wy\"}",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "{\"msg\": \"who are you\"}",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/db/insertToDbByCid": {
             "post": {
                 "description": "insert compound info to db by cid",
@@ -231,6 +268,17 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "smiles": {
+                    "type": "string"
+                }
+            }
+        },
+        "src.DbAndTableName": {
+            "type": "object",
+            "properties": {
+                "dbName": {
+                    "type": "string"
+                },
+                "tableName": {
                     "type": "string"
                 }
             }

@@ -83,6 +83,13 @@ var routes = Routes{
 	},
 
 	{
+		"InsertToDbByCid",
+		http.MethodPost,
+		"/api/v1/db/fillNullValue",
+		src.FillNullValue,
+	},
+
+	{
 		"GetCidFromName",
 		http.MethodPost,
 		"/api/v1/pug/getCidFromName",

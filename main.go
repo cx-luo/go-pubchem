@@ -25,7 +25,7 @@ func randomInt(min, max int64) int64 {
 
 // @title Golang go-pubchem APIs
 // @version 1.0
-// @description this is a sample server celler server
+// @description pubchem api server
 // @termsOfService https://www.swagger.io/terms/
 
 // @contact.name chengxiangLuo

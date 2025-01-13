@@ -21,7 +21,7 @@ info:
     email: andrew.luo1992@gmile.com
     name: chengxiangLuo
     url: https://github.com/netluo
-  description: this is a sample server celler server
+  description: pubchem api server
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html

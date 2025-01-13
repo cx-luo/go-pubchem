@@ -245,7 +245,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "Golang go-pubchem APIs",
-	Description:      "this is a sample server celler server",
+	Description:      "pubchem api server",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 }

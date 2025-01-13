@@ -465,14 +465,8 @@ func GetSDQOutputSetFromCacheKey(netCacheKey string, limit int, start int, order
 	"input":{
 	"type":"netcachekey",
 	"idtype":"cid",
-	"key":"%s"
-	}
-	}
-	]
-	},
-	"order":[
-	"%s"
-	],
+	"key":"%s"}}]},
+	"order":["%s"],
 	"start":%d,
 	"limit":%d,
 	"width":1000000,
@@ -706,30 +700,6 @@ func InsertSDQToDB(s *[]SDQSet) error {
 	return nil
 }
 
-func updateTableBySql(cid int, cName string, sqlStr string) error {
-	pkg.Logger.Info("Begin to update : %s, %d", cName, cid)
-	//updateSql := `update enotess.moc_condition_molecule_std set cid = ?
-	//                                      where standardized_name = ?`
-	affect, err := dao.MysqlCursor.Exec(sqlStr, cid, cName)
-	if err != nil {
-		return err
-	}
-	rowsAffected, _ := affect.RowsAffected()
-	pkg.Logger.Info("Affected rows : %d, %s, %d, %s", rowsAffected, sqlStr, cid, cName)
-	return nil
-}
-
-//func tagProcessed(cName string) error {
-//	updateSql := `update test.all_condition_first set processed = 1 where name = ? or standardized_name = ?`
-//	_, err := dao.MysqlCursor.Exec(updateSql, cName, cName)
-//	if err != nil {
-//		return err
-//	}
-//	//rowsAffected, _ := affect.RowsAffected()
-//	//dao.Logger.Info("Affected rows : %d, %s,  %s", rowsAffected, updateSql, cName)
-//	return nil
-//}
-
 /*
 	GetCompoundInfo
 
@@ -754,20 +724,6 @@ func GetCmpdFromQueryLimit(c *gin.Context) {
 		utils.BadRequestErr(c, err)
 		return
 	}
-	//err := tagProcessed(cName)
-	//if err != nil {
-	//	return err
-	//}
-	//nameResolved := strings.SplitN(cName, "|", 2)
-	//fmt.Println(nameResolved)
-	//cid := GetCidFromName(c) // 在这一步判断cid是否唯一，不唯一返回的是0
-	//if cid != 0 {
-	//	fmt.Println(cName, cid)
-	// 通常情况下，一个cid只对应一个化合物，所以只获取第一个.
-	// 不过为了严谨，还是判断一下长度，循环处理
-
-	//return nil
-	//}
 
 	// 如果cid为0，说明可能没查出来。换一种方式，可以通过GetSDQOutputSetFromQuery去查询
 	// 先获取一千条，一般来说，不会大于1000条，pubchem允许获取单次最大10000.

@@ -1,7 +1,7 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "this is a sample server celler server",
+        "description": "pubchem api server",
         "title": "Golang go-pubchem APIs",
         "termsOfService": "https://www.swagger.io/terms/",
         "contact": {

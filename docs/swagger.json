@@ -18,6 +18,43 @@
     "host": "192.168.21.94:8100",
     "basePath": "/api/v1",
     "paths": {
+        "/db/addDefaultValue": {
+            "post": {
+                "description": "insert compound info to db by cid",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "db"
+                ],
+                "summary": "AddDefaultValueForVarchar 设置表的字段为非空，并设置默认值",
+                "parameters": [
+                    {
+                        "description": "Cid",
+                        "name": "cid",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src.DbAndTableName"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{\"msg\": \"hello wy\"}",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "{\"msg\": \"who are you\"}",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/db/fillNullValue": {
             "post": {
                 "description": "insert compound info to db by cid",

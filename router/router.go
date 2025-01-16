@@ -88,6 +88,12 @@ var routes = Routes{
 		"/api/v1/db/fillNullValue",
 		src.FillNullValue,
 	},
+	{
+		"AddDefaultValueForVarchar",
+		http.MethodPost,
+		"/api/v1/db/addDefaultValue",
+		src.AddDefaultValueForVarchar,
+	},
 
 	{
 		"GetCidFromName",

@@ -53,9 +53,11 @@ func (dn DbAndTableName) FillNullValues() error {
 			// do nothing
 			break
 		}
-		_, err := dao.AidbCursor.Exec(updateNullToBullstrSql)
-		if err != nil {
-			return err
+		if updateNullToBullstrSql != "" {
+			_, err := dao.AidbCursor.Exec(updateNullToBullstrSql)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -97,10 +99,10 @@ func (dn DbAndTableName) SetDefaultValues() error {
 		var alterTableSql string
 		switch tbl.DataType {
 		case "varchar":
-			alterTableSql = fmt.Sprintf("alter /*+ parallel(8) +*/ table %s.%s MODIFY COLUMN `%s` %s CHARACTER SET %s COLLATE %s DEFAULT '' NOT NULL "+commentStr, dn.DbName, dn.TableName, tbl.ColumnName, tbl.ColumnType, tbl.CharacterSetName.String, tbl.CollationName.String)
+			alterTableSql = fmt.Sprintf("alter /*+ parallel(16) +*/ table %s.%s MODIFY COLUMN `%s` %s CHARACTER SET %s COLLATE %s DEFAULT '' NOT NULL "+commentStr, dn.DbName, dn.TableName, tbl.ColumnName, tbl.ColumnType, tbl.CharacterSetName.String, tbl.CollationName.String)
 			break
 		case "bigint", "tinyint", "decimal", "double", "int", "float", "smallint":
-			alterTableSql = fmt.Sprintf("alter /*+ parallel(8) +*/ table %s.%s MODIFY COLUMN `%s` %s DEFAULT 0 NOT NULL "+commentStr, dn.DbName, dn.TableName, tbl.ColumnName, tbl.DataType)
+			alterTableSql = fmt.Sprintf("alter /*+ parallel(16) +*/ table %s.%s MODIFY COLUMN `%s` %s DEFAULT 0 NOT NULL "+commentStr, dn.DbName, dn.TableName, tbl.ColumnName, tbl.DataType)
 			break
 		case "enum", "longtext", "mediumtext", "text", "tinytext", "char", "blob", "mediumblob", "longblob", "varbinary", "date", "datetime", "bit":
 			break
@@ -140,13 +142,17 @@ func (dn DbAndTableName) ConvertTextOrBit() error {
 	}
 
 	for _, tbl := range t {
+		commentStr := ""
+		if tbl.ColumnComment.Valid || len(tbl.ColumnComment.String) > 0 {
+			commentStr = fmt.Sprintf(`COMMENT '%s'`, tbl.ColumnComment.String)
+		}
 		switch tbl.DataType {
 		case "longtext", "mediumtext", "text", "tinytext":
 			var maxLen, setLen int64
-			qsql := fmt.Sprintf("select max(length(%s)) from %s.%s", tbl.ColumnName, dn.DbName, dn.TableName)
+			qsql := fmt.Sprintf("select ifnull(max(length(%s)),255) from %s.%s", tbl.ColumnName, dn.DbName, dn.TableName)
 			err := dao.AidbCursor.Get(&maxLen, qsql)
 			if err != nil {
-				return err
+				return errors.New(err.Error() + " " + dn.DbName + " " + dn.TableName)
 			}
 			switch {
 			case maxLen <= 60:
@@ -170,19 +176,19 @@ func (dn DbAndTableName) ConvertTextOrBit() error {
 			case maxLen <= 3000:
 				setLen = 3070
 				break
-			case maxLen <= 10000:
+			case maxLen <= 20000:
 				setLen = maxLen + 512
 				break
-			case maxLen > 10000:
+			case maxLen > 20000:
 				return nil
 			}
-			alterSql := fmt.Sprintf("ALTER /*+ parallel(8) +*/ TABLE %s.%s MODIFY COLUMN %s varchar(%d) CHARACTER SET %s COLLATE %s NULL", dn.DbName, dn.TableName, tbl.ColumnName, setLen, tbl.CharacterSetName.String, tbl.CollationName.String)
+			alterSql := fmt.Sprintf("ALTER /*+ parallel(16) +*/ TABLE %s.%s MODIFY COLUMN %s varchar(%d) CHARACTER SET %s COLLATE %s NULL "+commentStr, dn.DbName, dn.TableName, tbl.ColumnName, setLen, tbl.CharacterSetName.String, tbl.CollationName.String)
 			_, err = dao.AidbCursor.Exec(alterSql)
 			if err != nil {
 				return err
 			}
 		case "bit":
-			alterSql := fmt.Sprintf("ALTER TABLE %s.%s MODIFY COLUMN %s tinyint NULL", dn.DbName, dn.TableName, tbl.ColumnName)
+			alterSql := fmt.Sprintf("ALTER TABLE %s.%s MODIFY COLUMN %s tinyint NULL "+commentStr, dn.DbName, dn.TableName, tbl.ColumnName)
 			_, err = dao.AidbCursor.Exec(alterSql)
 			if err != nil {
 				return err

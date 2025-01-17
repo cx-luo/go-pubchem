@@ -60,6 +60,30 @@ paths:
       summary: AddDefaultValueForVarchar 设置表的字段为非空，并设置默认值
       tags:
       - db
+  /db/convertTextToVarchar:
+    post:
+      consumes:
+      - application/json
+      description: insert compound info to db by cid
+      parameters:
+      - description: Cid
+        in: body
+        name: cid
+        required: true
+        schema:
+          $ref: '#/definitions/src.DbAndTableName'
+      responses:
+        "200":
+          description: '{"msg": "hello wy"}'
+          schema:
+            type: string
+        "400":
+          description: '{"msg": "who are you"}'
+          schema:
+            type: string
+      summary: ConvertTextToVarchar convert text/bit to varchar/tinyint
+      tags:
+      - db
   /db/fillNullValue:
     post:
       consumes:

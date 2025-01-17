@@ -61,6 +61,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/db/convertTextToVarchar": {
+            "post": {
+                "description": "insert compound info to db by cid",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "db"
+                ],
+                "summary": "ConvertTextToVarchar convert text/bit to varchar/tinyint",
+                "parameters": [
+                    {
+                        "description": "Cid",
+                        "name": "cid",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src.DbAndTableName"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{\"msg\": \"hello wy\"}",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "{\"msg\": \"who are you\"}",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/db/fillNullValue": {
             "post": {
                 "description": "insert compound info to db by cid",

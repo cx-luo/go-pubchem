@@ -120,6 +120,44 @@ func (dn DbAndTableName) SetDefaultValues() error {
 	return nil
 }
 
+func (dn DbAndTableName) ModifyVarcharLen(columnName string) (errs error, length int64) {
+	var maxLen, setLen int64
+	qsql := fmt.Sprintf("select ifnull(max(length(%s)),255) from %s.%s", columnName, dn.DbName, dn.TableName)
+	err := dao.AidbCursor.Get(&maxLen, qsql)
+	if err != nil {
+		return errors.New(err.Error() + " " + dn.DbName + " " + dn.TableName), 0
+	}
+	switch {
+	case maxLen <= 60:
+		setLen = 63
+		break
+	case maxLen <= 120:
+		setLen = 126
+		break
+	case maxLen <= 252:
+		setLen = 254
+		break
+	case maxLen <= 510:
+		setLen = 512
+		break
+	case maxLen <= 1000:
+		setLen = 1022
+		break
+	case maxLen <= 2000:
+		setLen = 2040
+		break
+	case maxLen <= 3000:
+		setLen = 3070
+		break
+	case maxLen <= 20000:
+		setLen = maxLen + 512
+		break
+	case maxLen > 20000:
+		break
+	}
+	return nil, setLen
+}
+
 func (dn DbAndTableName) ConvertTextOrBit() error {
 	type tblInfo struct {
 		ColumnName       string         `db:"column_name"`
@@ -148,39 +186,9 @@ func (dn DbAndTableName) ConvertTextOrBit() error {
 		}
 		switch tbl.DataType {
 		case "longtext", "mediumtext", "text", "tinytext":
-			var maxLen, setLen int64
-			qsql := fmt.Sprintf("select ifnull(max(length(%s)),255) from %s.%s", tbl.ColumnName, dn.DbName, dn.TableName)
-			err := dao.AidbCursor.Get(&maxLen, qsql)
+			err, setLen := dn.ModifyVarcharLen(tbl.ColumnName)
 			if err != nil {
-				return errors.New(err.Error() + " " + dn.DbName + " " + dn.TableName)
-			}
-			switch {
-			case maxLen <= 60:
-				setLen = 63
-				break
-			case maxLen <= 120:
-				setLen = 126
-				break
-			case maxLen <= 252:
-				setLen = 254
-				break
-			case maxLen <= 510:
-				setLen = 512
-				break
-			case maxLen <= 1000:
-				setLen = 1022
-				break
-			case maxLen <= 2000:
-				setLen = 2040
-				break
-			case maxLen <= 3000:
-				setLen = 3070
-				break
-			case maxLen <= 20000:
-				setLen = maxLen + 512
-				break
-			case maxLen > 20000:
-				return nil
+				return err
 			}
 			alterSql := fmt.Sprintf("ALTER /*+ parallel(16) +*/ TABLE %s.%s MODIFY COLUMN %s varchar(%d) CHARACTER SET %s COLLATE %s NULL "+commentStr, dn.DbName, dn.TableName, tbl.ColumnName, setLen, tbl.CharacterSetName.String, tbl.CollationName.String)
 			_, err = dao.AidbCursor.Exec(alterSql)
@@ -274,6 +282,65 @@ func ConvertTextToVarchar(c *gin.Context) {
 	if err != nil {
 		utils.InternalRequestErr(c, err)
 		return
+	}
+
+	utils.OkRequest(c, "done")
+	return
+}
+
+// ModifyVarcharLength
+// @Summary ModifyVarcharLength modify varchar length
+// @Description insert compound info to db by cid
+// @Tags db
+// @Accept json
+// @Param cid body DbAndTableName true "Cid"
+// @Success 200 {string} string "{"msg": "hello wy"}"
+// @Failure 400 {string} string "{"msg": "who are you"}"
+// @Router /db/modifyVarcharLength [post]
+func ModifyVarcharLength(c *gin.Context) {
+	var t DbAndTableName
+	err := c.ShouldBind(&t)
+	if err != nil {
+		utils.BadRequestErr(c, err)
+		return
+	}
+
+	type tblInfo struct {
+		ColumnName       string         `db:"column_name"`
+		CharacterSetName sql.NullString `db:"character_set_name"`
+		CollationName    sql.NullString `db:"collation_name"`
+		ColumnComment    sql.NullString `db:"column_comment"`
+	}
+	var tbls []tblInfo
+	err = dao.AidbCursor.Select(&tbls, `SELECT  c.column_name as column_name, 
+			   c.CHARACTER_SET_NAME as character_set_name,
+			   c.COLLATION_NAME as collation_name, c.COLUMN_COMMENT as column_comment 
+			   FROM information_schema.COLUMNS c left join information_schema.tables t on 
+				c.TABLE_SCHEMA = t.TABLE_SCHEMA and c.TABLE_NAME = t.TABLE_NAME
+		WHERE c.TABLE_SCHEMA = ? and c.TABLE_NAME = ? and c.DATA_TYPE = 'varchar' `, t.DbName, t.TableName)
+	if err != nil {
+		utils.InternalRequestErr(c, err)
+		return
+	}
+
+	for _, tbl := range tbls {
+		err, setLen := t.ModifyVarcharLen(tbl.ColumnName)
+		if err != nil {
+			utils.InternalRequestErr(c, err)
+			return
+		}
+
+		commentStr := ""
+		if tbl.ColumnComment.Valid || len(tbl.ColumnComment.String) > 0 {
+			commentStr = fmt.Sprintf(`COMMENT '%s'`, tbl.ColumnComment.String)
+		}
+
+		alterSql := fmt.Sprintf("ALTER /*+ parallel(16) +*/ TABLE %s.%s MODIFY COLUMN %s varchar(%d) CHARACTER SET %s COLLATE %s NULL "+commentStr, t.DbName, t.TableName, tbl.ColumnName, setLen, tbl.CharacterSetName.String, tbl.CollationName.String)
+		_, err = dao.AidbCursor.Exec(alterSql)
+		if err != nil {
+			utils.InternalRequestErr(c, err)
+			return
+		}
 	}
 
 	utils.OkRequest(c, "done")

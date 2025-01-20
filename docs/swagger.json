@@ -166,6 +166,43 @@
                 }
             }
         },
+        "/db/modifyVarcharLength": {
+            "post": {
+                "description": "insert compound info to db by cid",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "db"
+                ],
+                "summary": "ModifyVarcharLength modify varchar length",
+                "parameters": [
+                    {
+                        "description": "Cid",
+                        "name": "cid",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src.DbAndTableName"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{\"msg\": \"hello wy\"}",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "{\"msg\": \"who are you\"}",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/pug/getCidFromName": {
             "post": {
                 "description": "insert results to db . If the cid is unique, return the cid, else return nil",

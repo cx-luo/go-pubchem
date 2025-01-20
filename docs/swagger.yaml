@@ -132,6 +132,30 @@ paths:
       summary: InsertToDbByCid 把对应Cid的数据写入数据库
       tags:
       - db
+  /db/modifyVarcharLength:
+    post:
+      consumes:
+      - application/json
+      description: insert compound info to db by cid
+      parameters:
+      - description: Cid
+        in: body
+        name: cid
+        required: true
+        schema:
+          $ref: '#/definitions/src.DbAndTableName'
+      responses:
+        "200":
+          description: '{"msg": "hello wy"}'
+          schema:
+            type: string
+        "400":
+          description: '{"msg": "who are you"}'
+          schema:
+            type: string
+      summary: ModifyVarcharLength modify varchar length
+      tags:
+      - db
   /pug/getCidFromName:
     post:
       consumes:

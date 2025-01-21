@@ -103,6 +103,13 @@ var routes = Routes{
 	},
 
 	{
+		"ConvertTextToVarchar",
+		http.MethodPost,
+		"/api/v1/db/modifyVarcharLength",
+		src.ModifyVarcharLength,
+	},
+
+	{
 		"GetCidFromName",
 		http.MethodPost,
 		"/api/v1/pug/getCidFromName",

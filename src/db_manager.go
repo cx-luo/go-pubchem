@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"go-pubchem/dao"
+	"go-pubchem/pkg"
 	"go-pubchem/utils"
 )
 
@@ -128,26 +129,29 @@ func (dn DbAndTableName) ModifyVarcharLen(columnName string) (errs error, length
 		return errors.New(err.Error() + " " + dn.DbName + " " + dn.TableName), 0
 	}
 	switch {
-	case maxLen <= 60:
-		setLen = 63
+	case maxLen < 64:
+		setLen = 64
 		break
-	case maxLen <= 120:
-		setLen = 126
+	case maxLen < 128:
+		setLen = 128
 		break
-	case maxLen <= 252:
-		setLen = 254
+	case maxLen < 256:
+		setLen = 256
 		break
-	case maxLen <= 510:
+	case maxLen < 512:
 		setLen = 512
 		break
-	case maxLen <= 1000:
-		setLen = 1022
+	case maxLen < 1024:
+		setLen = 1024
 		break
-	case maxLen <= 2000:
-		setLen = 2040
+	case maxLen < 2048:
+		setLen = 2048
 		break
-	case maxLen <= 3000:
-		setLen = 3070
+	case maxLen < 3072:
+		setLen = 3072
+		break
+	case maxLen < 4096:
+		setLen = 4096
 		break
 	case maxLen <= 20000:
 		setLen = maxLen + 512
@@ -310,36 +314,39 @@ func ModifyVarcharLength(c *gin.Context) {
 		CharacterSetName sql.NullString `db:"character_set_name"`
 		CollationName    sql.NullString `db:"collation_name"`
 		ColumnComment    sql.NullString `db:"column_comment"`
+		ColumnLen        int            `db:"column_len"`
 	}
 	var tbls []tblInfo
 	err = dao.AidbCursor.Select(&tbls, `SELECT  c.column_name as column_name, 
-			   c.CHARACTER_SET_NAME as character_set_name,
+			   c.CHARACTER_SET_NAME as character_set_name,c.CHARACTER_MAXIMUM_LENGTH as column_len,
 			   c.COLLATION_NAME as collation_name, c.COLUMN_COMMENT as column_comment 
 			   FROM information_schema.COLUMNS c left join information_schema.tables t on 
 				c.TABLE_SCHEMA = t.TABLE_SCHEMA and c.TABLE_NAME = t.TABLE_NAME
-		WHERE c.TABLE_SCHEMA = ? and c.TABLE_NAME = ? and c.DATA_TYPE = 'varchar' `, t.DbName, t.TableName)
+		WHERE c.TABLE_SCHEMA = ? and c.TABLE_NAME = ? and c.DATA_TYPE = 'varchar' and c.COLUMN_KEY != 'PRI' `, t.DbName, t.TableName)
 	if err != nil {
 		utils.InternalRequestErr(c, err)
 		return
 	}
 
 	for _, tbl := range tbls {
-		err, setLen := t.ModifyVarcharLen(tbl.ColumnName)
-		if err != nil {
-			utils.InternalRequestErr(c, err)
-			return
-		}
+		if tbl.ColumnLen < 512 {
+		} else {
+			err, setLen := t.ModifyVarcharLen(tbl.ColumnName)
+			if err != nil {
+				utils.InternalRequestErr(c, err)
+				return
+			}
 
-		commentStr := ""
-		if tbl.ColumnComment.Valid || len(tbl.ColumnComment.String) > 0 {
-			commentStr = fmt.Sprintf(`COMMENT '%s'`, tbl.ColumnComment.String)
-		}
+			commentStr := ""
+			if tbl.ColumnComment.Valid || len(tbl.ColumnComment.String) > 0 {
+				commentStr = fmt.Sprintf(`COMMENT '%s'`, tbl.ColumnComment.String)
+			}
 
-		alterSql := fmt.Sprintf("ALTER /*+ parallel(16) +*/ TABLE %s.%s MODIFY COLUMN %s varchar(%d) CHARACTER SET %s COLLATE %s NULL "+commentStr, t.DbName, t.TableName, tbl.ColumnName, setLen, tbl.CharacterSetName.String, tbl.CollationName.String)
-		_, err = dao.AidbCursor.Exec(alterSql)
-		if err != nil {
-			utils.InternalRequestErr(c, err)
-			return
+			alterSql := fmt.Sprintf("ALTER /*+ parallel(16) +*/ TABLE %s.%s MODIFY COLUMN %s varchar(%d) CHARACTER SET %s COLLATE %s NULL "+commentStr, t.DbName, t.TableName, tbl.ColumnName, setLen, tbl.CharacterSetName.String, tbl.CollationName.String)
+			_, err = dao.AidbCursor.Exec(alterSql)
+			if err != nil {
+				pkg.Logger.Error(err)
+			}
 		}
 	}
 

@@ -8,7 +8,6 @@ type Compound struct {
 	Mw                     float64 `json:"mw"`
 	Polararea              float64 `json:"polararea"`
 	Complexity             float64 `json:"complexity"`
-	Xlogp                  float64 `json:"xlogp"`
 	Exactmass              float64 `json:"exactmass"`
 	Monoisotopicmass       float64 `json:"monoisotopicmass"`
 	Heavycnt               int     `json:"heavycnt"`
@@ -28,22 +27,17 @@ type Compound struct {
 	Pclidcnt               int     `json:"pclidcnt"`
 	Gpidcnt                int     `json:"gpidcnt"`
 	Gpfamilycnt            int     `json:"gpfamilycnt"`
-	Aids                   string  `json:"aids"`
 	Cmpdname               string  `json:"cmpdname"`
 	Cmpdsynonym            string  `json:"cmpdsynonym"`
 	Inchi                  string  `json:"inchi"`
 	Inchikey               string  `json:"inchikey"`
-	Isosmiles              string  `json:"isosmiles"`
+	Smiles                 string  `json:"smiles"`
 	Iupacname              string  `json:"iupacname"`
 	Mf                     string  `json:"mf"`
 	Sidsrcname             string  `json:"sidsrcname"`
-	Annotation             string  `json:"annotation"`
 	Cidcdate               string  `json:"cidcdate"`
 	Depcatg                string  `json:"depcatg"`
-	Meshheadings           string  `json:"meshheadings"`
 	Annothits              string  `json:"annothits"`
-	Neighbortype           string  `json:"neighbortype"`
-	Canonicalsmiles        string  `json:"canonicalsmiles"`
 }
 
 type SearchType struct {

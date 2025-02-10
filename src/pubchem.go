@@ -315,7 +315,7 @@ type usedProps struct {
 	Cmpdname         string  `json:"cmpdname"`
 	Mf               string  `json:"mf"`
 	Mw               float64 `json:"mw"`
-	Isosmiles        string  `json:"isosmiles"`
+	Smiles           string  `json:"smiles"`
 	Exactmass        float64 `json:"exactmass"`
 	Monoisotopicmass float64 `json:"monoisotopicmass"`
 	Inchi            string  `json:"inchi"`
@@ -363,9 +363,8 @@ func GetCmpdWithCasFromCid(c *gin.Context) {
 				Cmpdname:         row.Cmpdname,
 				Inchi:            row.Inchi,
 				Inchikey:         row.Inchikey,
-				Isosmiles:        row.Isosmiles,
+				Smiles:           row.Smiles,
 				Iupacname:        row.Iupacname,
-				Canonicalsmiles:  row.Canonicalsmiles,
 			},
 			Cas: cas,
 		}
@@ -602,8 +601,8 @@ CREATE TABLE `compound_from_pubchem` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 */
 func (s *SDQSet) InsertCompoundsToDB() error {
-	insertSql := `replace INTO ai_repo.compound_from_pubchem(
-		cid, mw, polararea, complexity, xlogp, exactmass,
+	insertSql := `insert INTO ai_repo.compound_from_pubchem(
+		cid, mw, polararea, complexity, exactmass,
 		monoisotopicmass, heavycnt, hbonddonor, hbondacc, 
 		rotbonds, annothitcnt, charge, covalentunitcnt, 
 		isotopeatomcnt, totalatomstereocnt, definedatomstereocnt, 
@@ -614,7 +613,6 @@ func (s *SDQSet) InsertCompoundsToDB() error {
 		pclidcnt,
 		gpidcnt,
 		gpfamilycnt,
-		aids,
 		cmpdname,
         cmpdsynonym,
 		inchi,
@@ -625,14 +623,11 @@ func (s *SDQSet) InsertCompoundsToDB() error {
 		sidsrcname,
 		cidcdate,
 		depcatg,
-		annothits,
-		neighbortype,
-		canonicalsmiles)
+		annothits)
 		VALUES (:cid,
 		:mw,
 		:polararea,
 		:complexity,
-		:xlogp,
 		:exactmass,
 		:monoisotopicmass,
 		:heavycnt,
@@ -652,20 +647,17 @@ func (s *SDQSet) InsertCompoundsToDB() error {
 		:pclidcnt,
 		:gpidcnt,
 		:gpfamilycnt,
-		:aids,
 		:cmpdname,
 		:cmpdsynonym,
 		:inchi,
 		:inchikey,
-		:isosmiles,
+		:smiles,
 		:iupacname,
 		:mf,
 		:sidsrcname,
 		:cidcdate,
 		:depcatg,
-		:annothits,
-		:neighbortype,
-		:canonicalsmiles)`
+		:annothits) on duplicate key update cmpdsynonym=:cmpdsynonym, isosmiles = :smiles`
 
 	for i := 0; i < len(s.Rows); i++ {
 		row := s.Rows[i]

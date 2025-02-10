@@ -321,7 +321,6 @@ type usedProps struct {
 	Inchi            string  `json:"inchi"`
 	Inchikey         string  `json:"inchikey"`
 	Iupacname        string  `json:"iupacname"`
-	Canonicalsmiles  string  `json:"canonicalsmiles"`
 }
 
 type usedRows struct {

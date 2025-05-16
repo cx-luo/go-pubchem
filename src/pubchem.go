@@ -354,16 +354,14 @@ func GetCmpdWithCasFromCid(c *gin.Context) {
 		cas := getCasByRegexp(row.Cmpdsynonym)
 		var u = usedRows{
 			Compound: usedProps{
-				Cid:              row.Cid,
-				Mf:               row.Mf,
-				Mw:               row.Mw,
-				Exactmass:        row.Exactmass,
-				Monoisotopicmass: row.Monoisotopicmass,
-				Cmpdname:         row.Cmpdname,
-				Inchi:            row.Inchi,
-				Inchikey:         row.Inchikey,
-				Smiles:           row.Smiles,
-				Iupacname:        row.Iupacname,
+				Cid:       row.Cid,
+				Mf:        row.Mf,
+				Mw:        row.Mw,
+				Cmpdname:  row.Cmpdname,
+				Inchi:     row.Inchi,
+				Inchikey:  row.Inchikey,
+				Smiles:    row.Smiles,
+				Iupacname: row.Iupacname,
 			},
 			Cas: cas,
 		}
@@ -448,7 +446,6 @@ func GetCacheKeyAndHitCountFromSmiles(smiles string) string {
 	if pubChemCache.Response.Status != 0 {
 		pkg.Logger.Error(pubChemCache.Response.Message)
 	}
-	fmt.Println(pubChemCache.Response)
 	return pubChemCache.Response.Cachekey
 }
 

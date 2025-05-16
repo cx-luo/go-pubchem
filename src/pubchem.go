@@ -356,17 +356,14 @@ func GetCmpdWithCasFromCid(c *gin.Context) {
 		cas := getCasByRegexp(row.Cmpdsynonym)
 		var u = usedRows{
 			Compound: usedProps{
-				Cid:              row.Cid,
-				Mf:               row.Mf,
-				Mw:               row.Mw,
-				Exactmass:        row.Exactmass,
-				Monoisotopicmass: row.Monoisotopicmass,
-				Cmpdname:         row.Cmpdname,
-				Inchi:            row.Inchi,
-				Inchikey:         row.Inchikey,
-				Isosmiles:        row.Isosmiles,
-				Iupacname:        row.Iupacname,
-				Canonicalsmiles:  row.Canonicalsmiles,
+				Cid:       row.Cid,
+				Mf:        row.Mf,
+				Mw:        row.Mw,
+				Cmpdname:  row.Cmpdname,
+				Inchi:     row.Inchi,
+				Inchikey:  row.Inchikey,
+				Isosmiles: row.Smiles,
+				Iupacname: row.Iupacname,
 			},
 			Cas: cas,
 		}

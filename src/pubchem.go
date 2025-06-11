@@ -2,6 +2,7 @@ package src
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	toolkit "github.com/cx-luo/go-toolkit"
 	"github.com/gin-gonic/gin"
@@ -10,7 +11,6 @@ import (
 	"go-pubchem/utils"
 	"io"
 	"io/ioutil"
-	"math"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -255,12 +255,18 @@ func GetCidFromName(c *gin.Context) {
 
 	// 把查询到的结果写到数据库里
 	for _, cid := range cIds.ConceptsAndCIDs.CID {
-		sqdSet := GetSDQOutputSetFromCid(cid, 10, 1).SDQOutputSet
-		err = InsertSDQToDB(&sqdSet)
+		sqdSet, err := GetSDQOutputSetFromCid(cid, 10, 1)
 		if err != nil {
 			utils.InternalRequestErr(c, err)
 			return
 		}
+
+		err = InsertSDQToDB(&sqdSet.SDQOutputSet)
+		if err != nil {
+			utils.InternalRequestErr(c, err)
+			return
+		}
+
 	}
 
 	if len(cIds.ConceptsAndCIDs.CID) == 1 {
@@ -288,8 +294,12 @@ func InsertToDbByCid(c *gin.Context) {
 		utils.BadRequestErr(c, err)
 		return
 	}
-	sqdSet := GetSDQOutputSetFromCid(s.Cid, 1, 1).SDQOutputSet
-	err = InsertSDQToDB(&sqdSet)
+	sqdSet, err := GetSDQOutputSetFromCid(s.Cid, 1, 1)
+	if err != nil {
+		utils.BadRequestErr(c, err)
+		return
+	}
+	err = InsertSDQToDB(&sqdSet.SDQOutputSet)
 	if err != nil {
 		utils.InternalRequestErr(c, err)
 		return
@@ -316,13 +326,12 @@ type usedProps struct {
 	Cmpdname         string  `json:"cmpdname"`
 	Mf               string  `json:"mf"`
 	Mw               float64 `json:"mw"`
-	Isosmiles        string  `json:"isosmiles"`
+	Smiles           string  `json:"smiles"`
 	Exactmass        float64 `json:"exactmass"`
 	Monoisotopicmass float64 `json:"monoisotopicmass"`
 	Inchi            string  `json:"inchi"`
 	Inchikey         string  `json:"inchikey"`
 	Iupacname        string  `json:"iupacname"`
-	Canonicalsmiles  string  `json:"canonicalsmiles"`
 }
 
 type usedRows struct {
@@ -351,8 +360,12 @@ func GetCmpdWithCasFromCid(c *gin.Context) {
 		return
 	}
 	var compounds []usedRows
-	sqdSet := GetSDQOutputSetFromCid(s.Cid, 10, 1).SDQOutputSet
-	for _, row := range sqdSet[0].Rows {
+	sqdSet, err := GetSDQOutputSetFromCid(s.Cid, 10, 1)
+	if err != nil {
+		utils.BadRequestErr(c, err)
+		return
+	}
+	for _, row := range sqdSet.SDQOutputSet[0].Rows {
 		cas := getCasByRegexp(row.Cmpdsynonym)
 		var u = usedRows{
 			Compound: usedProps{
@@ -362,7 +375,7 @@ func GetCmpdWithCasFromCid(c *gin.Context) {
 				Cmpdname:  row.Cmpdname,
 				Inchi:     row.Inchi,
 				Inchikey:  row.Inchikey,
-				Isosmiles: row.Smiles,
+				Smiles:    row.Smiles,
 				Iupacname: row.Iupacname,
 			},
 			Cas: cas,
@@ -448,7 +461,6 @@ func GetCacheKeyAndHitCountFromSmiles(smiles string) string {
 	if pubChemCache.Response.Status != 0 {
 		pkg.Logger.Error(pubChemCache.Response.Message)
 	}
-	fmt.Println(pubChemCache.Response)
 	return pubChemCache.Response.Cachekey
 }
 
@@ -462,14 +474,8 @@ func GetSDQOutputSetFromCacheKey(netCacheKey string, limit int, start int, order
 	"input":{
 	"type":"netcachekey",
 	"idtype":"cid",
-	"key":"%s"
-	}
-	}
-	]
-	},
-	"order":[
-	"%s"
-	],
+	"key":"%s"}}]},
+	"order":["%s"],
 	"start":%d,
 	"limit":%d,
 	"width":1000000,
@@ -532,7 +538,7 @@ func GetSDQOutputSetFromQuery(cName string, limit int, start int) SDQOutputSet {
 /*
 GetSDQOutputSetFromCid 通过cid获取SDQOutputSet
 */
-func GetSDQOutputSetFromCid(cid int, limit int, start int) SDQOutputSet {
+func GetSDQOutputSetFromCid(cid int, limit int, start int) (SDQOutputSet, error) {
 	jsData := fmt.Sprintf(`{"select":"*","collection":"compound","where":{"ands":[{"cid":"%d"}]},"order":["cid,asc"],"start":%d,"limit":%d,"width":1000000,"listids":0}`, cid, start, limit)
 	currUrl := "https://pubchem.ncbi.nlm.nih.gov/sdq/sdqagent.cgi?"
 	params := url.Values{}
@@ -547,13 +553,13 @@ func GetSDQOutputSetFromCid(cid int, limit int, start int) SDQOutputSet {
 	err := json.Unmarshal(bodyText, &sdq)
 	if err != nil {
 		pkg.Logger.Error(err)
-		return SDQOutputSet{SDQOutputSet: nil}
+		return SDQOutputSet{SDQOutputSet: nil}, err
 	}
 	if sdq.SDQOutputSet[0].Status.Code != 0 {
 		pkg.Logger.Error("GetSDQOutputSetFromCid : %d, %d, %s", cid, sdq.SDQOutputSet[0].Status.Code, sdq.SDQOutputSet[0].Status.Error)
-		return SDQOutputSet{SDQOutputSet: nil}
+		return SDQOutputSet{SDQOutputSet: nil}, errors.New(fmt.Sprintf("GetSDQOutputSetFromCid : %d, %d, %s", cid, sdq.SDQOutputSet[0].Status.Code, sdq.SDQOutputSet[0].Status.Error))
 	}
-	return sdq
+	return sdq, nil
 }
 
 /*
@@ -606,8 +612,8 @@ CREATE TABLE `compound_from_pubchem` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 */
 func (s *SDQSet) InsertCompoundsToDB() error {
-	insertSql := `replace INTO ai_repo.compound_from_pubchem(
-		cid, mw, polararea, complexity, xlogp, exactmass,
+	insertSql := `insert INTO ai_repo.compound_from_pubchem(
+		cid, mw, polararea, complexity, exactmass,
 		monoisotopicmass, heavycnt, hbonddonor, hbondacc, 
 		rotbonds, annothitcnt, charge, covalentunitcnt, 
 		isotopeatomcnt, totalatomstereocnt, definedatomstereocnt, 
@@ -618,7 +624,6 @@ func (s *SDQSet) InsertCompoundsToDB() error {
 		pclidcnt,
 		gpidcnt,
 		gpfamilycnt,
-		aids,
 		cmpdname,
         cmpdsynonym,
 		inchi,
@@ -629,14 +634,11 @@ func (s *SDQSet) InsertCompoundsToDB() error {
 		sidsrcname,
 		cidcdate,
 		depcatg,
-		annothits,
-		neighbortype,
-		canonicalsmiles)
+		annothits)
 		VALUES (:cid,
 		:mw,
 		:polararea,
 		:complexity,
-		:xlogp,
 		:exactmass,
 		:monoisotopicmass,
 		:heavycnt,
@@ -656,20 +658,17 @@ func (s *SDQSet) InsertCompoundsToDB() error {
 		:pclidcnt,
 		:gpidcnt,
 		:gpfamilycnt,
-		:aids,
 		:cmpdname,
 		:cmpdsynonym,
 		:inchi,
 		:inchikey,
-		:isosmiles,
+		:smiles,
 		:iupacname,
 		:mf,
 		:sidsrcname,
 		:cidcdate,
 		:depcatg,
-		:annothits,
-		:neighbortype,
-		:canonicalsmiles)`
+		:annothits) on duplicate key update cmpdsynonym=:cmpdsynonym, isosmiles = :smiles`
 
 	for i := 0; i < len(s.Rows); i++ {
 		row := s.Rows[i]
@@ -703,29 +702,13 @@ func InsertSDQToDB(s *[]SDQSet) error {
 	return nil
 }
 
-func updateTableBySql(cid int, cName string, sqlStr string) error {
-	pkg.Logger.Info("Begin to update : %s, %d", cName, cid)
-	//updateSql := `update enotess.moc_condition_molecule_std set cid = ?
-	//                                      where standardized_name = ?`
-	affect, err := dao.MysqlCursor.Exec(sqlStr, cid, cName)
-	if err != nil {
-		return err
+// 辅助函数，用于安全地取最小值
+func min(a, b int) int {
+	if a < b {
+		return a
 	}
-	rowsAffected, _ := affect.RowsAffected()
-	pkg.Logger.Info("Affected rows : %d, %s, %d, %s", rowsAffected, sqlStr, cid, cName)
-	return nil
+	return b
 }
-
-//func tagProcessed(cName string) error {
-//	updateSql := `update test.all_condition_first set processed = 1 where name = ? or standardized_name = ?`
-//	_, err := dao.MysqlCursor.Exec(updateSql, cName, cName)
-//	if err != nil {
-//		return err
-//	}
-//	//rowsAffected, _ := affect.RowsAffected()
-//	//dao.Logger.Info("Affected rows : %d, %s,  %s", rowsAffected, updateSql, cName)
-//	return nil
-//}
 
 /*
 	GetCompoundInfo
@@ -751,20 +734,6 @@ func GetCmpdFromQueryLimit(c *gin.Context) {
 		utils.BadRequestErr(c, err)
 		return
 	}
-	//err := tagProcessed(cName)
-	//if err != nil {
-	//	return err
-	//}
-	//nameResolved := strings.SplitN(cName, "|", 2)
-	//fmt.Println(nameResolved)
-	//cid := GetCidFromName(c) // 在这一步判断cid是否唯一，不唯一返回的是0
-	//if cid != 0 {
-	//	fmt.Println(cName, cid)
-	// 通常情况下，一个cid只对应一个化合物，所以只获取第一个.
-	// 不过为了严谨，还是判断一下长度，循环处理
-
-	//return nil
-	//}
 
 	// 如果cid为0，说明可能没查出来。换一种方式，可以通过GetSDQOutputSetFromQuery去查询
 	// 先获取一千条，一般来说，不会大于1000条，pubchem允许获取单次最大10000.
@@ -776,38 +745,38 @@ func GetCmpdFromQueryLimit(c *gin.Context) {
 	totalCount := sqdSet[0].TotalCount
 	switch {
 	case totalCount == 0:
-		pkg.Logger.Info("Don't find,compound name : %s.", s.Name)
+		pkg.Logger.Info("No results found for compound name: %s", s.Name)
 		utils.OkRequestWithData(c, "", gin.H{"total": 0, "list": nil})
 		return
 
 	case totalCount > 1000:
-		// 先把当前的一千条写入
-		err := InsertSDQToDB(&sqdSet)
-		if err != nil {
+		// 处理前1000条记录
+		if err := InsertSDQToDB(&sqdSet); err != nil {
 			utils.InternalRequestErr(c, err)
 			return
 		}
 
-		utils.OkRequestWithData(c, "", gin.H{"total": totalCount, "list": sqdSet[:10]})
-		// 获取一千条之后的，再次写入
-		cnt := math.Ceil(float64(totalCount) / 1000)
-		for i := 1; i < int(cnt); i++ {
-			sqdSet := GetSDQOutputSetFromQuery(s.Name, 1000, i*1000+1).SDQOutputSet
-			err := InsertSDQToDB(&sqdSet)
-			if err != nil {
+		utils.OkRequestWithData(c, "", gin.H{"total": totalCount, "list": sqdSet[:min(len(sqdSet), 10)]})
+
+		// 处理剩余的记录
+		for i := 1; i*1000 < totalCount; i++ {
+			offset := i * 1000
+			batch := GetSDQOutputSetFromQuery(s.Name, min(1000, totalCount-offset), offset+1).SDQOutputSet
+			if len(batch) == 0 { // 如果没有更多的数据，提前结束循环
+				break
+			}
+			if err := InsertSDQToDB(&batch); err != nil {
 				utils.InternalRequestErr(c, err)
 				return
 			}
 		}
 
 	default:
-		err := InsertSDQToDB(&sqdSet)
-		if err != nil {
+		if err := InsertSDQToDB(&sqdSet); err != nil {
 			utils.InternalRequestErr(c, err)
 			return
 		}
-		utils.OkRequestWithData(c, "", gin.H{"total": totalCount, "list": sqdSet[0].Rows[:10]})
-		return
+		utils.OkRequestWithData(c, "", gin.H{"total": totalCount, "list": sqdSet[:min(len(sqdSet), 10)]})
 	}
 	return
 }
@@ -839,7 +808,8 @@ func InsertCompoundInfo() {
 		sema.Acquire(1)
 		go func(n int) {
 			defer sema.Release()
-			sqdSet := GetSDQOutputSetFromCid(n, 10, 1).SDQOutputSet
+			s, _ := GetSDQOutputSetFromCid(n, 10, 1)
+			sqdSet := s.SDQOutputSet
 			if len(sqdSet) == 0 {
 				return
 			}

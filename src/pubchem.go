@@ -2,6 +2,7 @@ package src
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	toolkit "github.com/netluo/go-toolkit"
@@ -254,12 +255,18 @@ func GetCidFromName(c *gin.Context) {
 
 	// 把查询到的结果写到数据库里
 	for _, cid := range cIds.ConceptsAndCIDs.CID {
-		sqdSet := GetSDQOutputSetFromCid(cid, 10, 1).SDQOutputSet
-		err = InsertSDQToDB(&sqdSet)
+		sqdSet, err := GetSDQOutputSetFromCid(cid, 10, 1)
 		if err != nil {
 			utils.InternalRequestErr(c, err)
 			return
 		}
+
+		err = InsertSDQToDB(&sqdSet.SDQOutputSet)
+		if err != nil {
+			utils.InternalRequestErr(c, err)
+			return
+		}
+
 	}
 
 	if len(cIds.ConceptsAndCIDs.CID) == 1 {
@@ -287,8 +294,12 @@ func InsertToDbByCid(c *gin.Context) {
 		utils.BadRequestErr(c, err)
 		return
 	}
-	sqdSet := GetSDQOutputSetFromCid(s.Cid, 1, 1).SDQOutputSet
-	err = InsertSDQToDB(&sqdSet)
+	sqdSet, err := GetSDQOutputSetFromCid(s.Cid, 1, 1)
+	if err != nil {
+		utils.BadRequestErr(c, err)
+		return
+	}
+	err = InsertSDQToDB(&sqdSet.SDQOutputSet)
 	if err != nil {
 		utils.InternalRequestErr(c, err)
 		return
@@ -349,8 +360,12 @@ func GetCmpdWithCasFromCid(c *gin.Context) {
 		return
 	}
 	var compounds []usedRows
-	sqdSet := GetSDQOutputSetFromCid(s.Cid, 10, 1).SDQOutputSet
-	for _, row := range sqdSet[0].Rows {
+	sqdSet, err := GetSDQOutputSetFromCid(s.Cid, 10, 1)
+	if err != nil {
+		utils.BadRequestErr(c, err)
+		return
+	}
+	for _, row := range sqdSet.SDQOutputSet[0].Rows {
 		cas := getCasByRegexp(row.Cmpdsynonym)
 		var u = usedRows{
 			Compound: usedProps{
@@ -523,7 +538,7 @@ func GetSDQOutputSetFromQuery(cName string, limit int, start int) SDQOutputSet {
 /*
 GetSDQOutputSetFromCid 通过cid获取SDQOutputSet
 */
-func GetSDQOutputSetFromCid(cid int, limit int, start int) SDQOutputSet {
+func GetSDQOutputSetFromCid(cid int, limit int, start int) (SDQOutputSet, error) {
 	jsData := fmt.Sprintf(`{"select":"*","collection":"compound","where":{"ands":[{"cid":"%d"}]},"order":["cid,asc"],"start":%d,"limit":%d,"width":1000000,"listids":0}`, cid, start, limit)
 	currUrl := "https://pubchem.ncbi.nlm.nih.gov/sdq/sdqagent.cgi?"
 	params := url.Values{}
@@ -538,13 +553,13 @@ func GetSDQOutputSetFromCid(cid int, limit int, start int) SDQOutputSet {
 	err := json.Unmarshal(bodyText, &sdq)
 	if err != nil {
 		pkg.Logger.Error(err)
-		return SDQOutputSet{SDQOutputSet: nil}
+		return SDQOutputSet{SDQOutputSet: nil}, err
 	}
 	if sdq.SDQOutputSet[0].Status.Code != 0 {
 		pkg.Logger.Error("GetSDQOutputSetFromCid : %d, %d, %s", cid, sdq.SDQOutputSet[0].Status.Code, sdq.SDQOutputSet[0].Status.Error)
-		return SDQOutputSet{SDQOutputSet: nil}
+		return SDQOutputSet{SDQOutputSet: nil}, errors.New(fmt.Sprintf("GetSDQOutputSetFromCid : %d, %d, %s", cid, sdq.SDQOutputSet[0].Status.Code, sdq.SDQOutputSet[0].Status.Error))
 	}
-	return sdq
+	return sdq, nil
 }
 
 /*
@@ -793,7 +808,8 @@ func InsertCompoundInfo() {
 		sema.Acquire(1)
 		go func(n int) {
 			defer sema.Release()
-			sqdSet := GetSDQOutputSetFromCid(n, 10, 1).SDQOutputSet
+			s, _ := GetSDQOutputSetFromCid(n, 10, 1)
+			sqdSet := s.SDQOutputSet
 			if len(sqdSet) == 0 {
 				return
 			}

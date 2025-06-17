@@ -116,7 +116,7 @@ func fetchURL(parseurl string) (string, error) {
 	return string(body), nil
 }
 
-func urlGet(epUrl string) []byte {
+func urlGet(epUrl string) ([]byte, error) {
 	// 创建一个自定义的 Transport 实例
 	transport := &http.Transport{
 		//Proxy: func(req *http.Request) (*url.URL, error) {
@@ -129,27 +129,26 @@ func urlGet(epUrl string) []byte {
 	// 创建一个自定义的 Client 实例
 	client := &http.Client{
 		Transport: transport,        // 设置 Transport
-		Timeout:   time.Second * 10, // 设置超时
+		Timeout:   time.Second * 30, // 设置超时
 	}
 
 	req, err := http.NewRequest("GET", epUrl, nil)
 	if err != nil {
-		pkg.Logger.Critical(err)
+		pkg.Logger.Error(err.Error())
+		return nil, err
 	}
 
 	response, err := client.Do(req)
 	if err != nil {
-		pkg.Logger.Critical("%v", err)
-		return nil
+		return nil, err
 	}
 
 	if response.StatusCode != 200 {
-		pkg.Logger.Error("Error status : %s, url : %s ", response.Status, epUrl)
-		return nil
+		return nil, errors.New(fmt.Sprintf("Error status : %s, url : %s ", response.Status, epUrl))
 	}
 
 	defer func(Body io.ReadCloser) {
-		err := Body.Close()
+		err = Body.Close()
 		if err != nil {
 			return
 		}
@@ -157,10 +156,9 @@ func urlGet(epUrl string) []byte {
 
 	bodyText, err := io.ReadAll(response.Body)
 	if err != nil {
-		pkg.Logger.Critical(err)
-		return nil
+		return nil, err
 	}
-	return bodyText
+	return bodyText, nil
 }
 
 // GetCidFromSmiles
@@ -180,7 +178,7 @@ func GetCidFromSmiles(c *gin.Context) {
 		return
 	}
 	curl := fmt.Sprintf("https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/%s/cids/json", s.Smiles)
-	res := urlGet(curl)
+	res, err := urlGet(curl)
 	type IdentifierList struct {
 		IdentifierList struct {
 			Cid []int `json:"CID"`
@@ -241,7 +239,11 @@ func GetCidFromName(c *gin.Context) {
 	curl = curl + params.Encode()
 
 	var cIds CIDs
-	res := urlGet(curl)
+	res, err := urlGet(curl)
+	if err != nil {
+		utils.InternalRequestErr(c, err)
+		return
+	}
 	if res == nil {
 		utils.OkRequestWithData(c, "", gin.H{"total": 0, "list": nil})
 		return
@@ -417,8 +419,12 @@ func GetCacheKeyAndHitCountFromFormula(molecularFormula string, queryType string
 	currUrl = currUrl + params.Encode()
 	var pubchemCache PubchemCache
 
-	bodyText := urlGet(currUrl)
-	err := json.Unmarshal(bodyText, &pubchemCache)
+	bodyText, err := urlGet(currUrl)
+	if err != nil {
+		pkg.Logger.Warn(err.Error())
+		return "", 0
+	}
+	err = json.Unmarshal(bodyText, &pubchemCache)
 	if err != nil {
 		pkg.Logger.Error(err)
 	}
@@ -453,8 +459,8 @@ func GetCacheKeyAndHitCountFromSmiles(smiles string) string {
 
 	var pubChemCache PubchemCache
 
-	bodyText := urlGet(currentUrl)
-	err := json.Unmarshal(bodyText, &pubChemCache)
+	bodyText, err := urlGet(currentUrl)
+	err = json.Unmarshal(bodyText, &pubChemCache)
 	if err != nil {
 		pkg.Logger.Error(err)
 	}
@@ -494,7 +500,11 @@ func GetSDQOutputSetFromCacheKey(netCacheKey string, limit int, start int, order
 	currUrl = currUrl + params.Encode()
 
 	var sdq SDQOutputSet
-	bodyText := urlGet(currUrl)
+	bodyText, err := urlGet(currUrl)
+	if err != nil {
+		pkg.Logger.Warn(err.Error())
+		return SDQOutputSet{SDQOutputSet: nil}
+	}
 	err = json.Unmarshal(bodyText, &sdq)
 	return sdq
 }
@@ -523,11 +533,15 @@ func GetSDQOutputSetFromQuery(cName string, limit int, start int) SDQOutputSet {
 	currUrl = currUrl + params.Encode()
 
 	var sdq SDQOutputSet
-	bodyText := urlGet(currUrl)
+	bodyText, err := urlGet(currUrl)
+	if err != nil {
+		pkg.Logger.Warn(err.Error())
+		return SDQOutputSet{SDQOutputSet: nil}
+	}
 	if bodyText == nil {
 		return SDQOutputSet{SDQOutputSet: nil}
 	}
-	err := json.Unmarshal(bodyText, &sdq)
+	err = json.Unmarshal(bodyText, &sdq)
 	if err != nil {
 		pkg.Logger.Error(err)
 		return SDQOutputSet{SDQOutputSet: nil}
@@ -549,8 +563,12 @@ func GetSDQOutputSetFromCid(cid int, limit int, start int) (SDQOutputSet, error)
 	pkg.Logger.Info(currUrl)
 
 	var sdq SDQOutputSet
-	bodyText := urlGet(currUrl)
-	err := json.Unmarshal(bodyText, &sdq)
+	bodyText, err := urlGet(currUrl)
+	if err != nil {
+		pkg.Logger.Warn(err.Error())
+		return SDQOutputSet{SDQOutputSet: nil}, err
+	}
+	err = json.Unmarshal(bodyText, &sdq)
 	if err != nil {
 		pkg.Logger.Error(err)
 		return SDQOutputSet{SDQOutputSet: nil}, err

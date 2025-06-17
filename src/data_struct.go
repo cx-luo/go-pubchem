@@ -2,44 +2,6 @@ package src
 
 import "encoding/json"
 
-// Compound for get net cachekey
-type Compound struct {
-	Cid                    int     `json:"cid,omitempty" db:"cid"`
-	Mw                     float64 `json:"mw,omitempty" db:"mw"`
-	Polararea              float64 `json:"polararea,omitempty" db:"polararea"`
-	Complexity             float64 `json:"complexity,omitempty" db:"complexity"`
-	Heavycnt               int     `json:"heavycnt,omitempty" db:"heavycnt"`
-	Hbonddonor             int     `json:"hbonddonor,omitempty" db:"hbonddonor"`
-	Hbondacc               int     `json:"hbondacc,omitempty" db:"hbondacc"`
-	Rotbonds               int     `json:"rotbonds,omitempty" db:"rotbonds"`
-	Annothitcnt            int     `json:"annothitcnt,omitempty" db:"annothitcnt"`
-	Charge                 int     `json:"charge,omitempty" db:"charge"`
-	Covalentunitcnt        int     `json:"covalentunitcnt,omitempty" db:"covalentunitcnt"`
-	Isotopeatomcnt         int     `json:"isotopeatomcnt,omitempty" db:"isotopeatomcnt"`
-	Totalatomstereocnt     int     `json:"totalatomstereocnt,omitempty" db:"totalatomstereocnt"`
-	Definedatomstereocnt   int     `json:"definedatomstereocnt,omitempty" db:"definedatomstereocnt"`
-	Undefinedatomstereocnt int     `json:"undefinedatomstereocnt,omitempty" db:"undefinedatomstereocnt"`
-	Totalbondstereocnt     int     `json:"totalbondstereocnt,omitempty" db:"totalbondstereocnt"`
-	Definedbondstereocnt   int     `json:"definedbondstereocnt,omitempty" db:"definedbondstereocnt"`
-	Undefinedbondstereocnt int     `json:"undefinedbondstereocnt,omitempty" db:"undefinedbondstereocnt"`
-	Pclidcnt               int     `json:"pclidcnt,omitempty" db:"pclidcnt"`
-	Gpidcnt                int     `json:"gpidcnt,omitempty" db:"gpidcnt"`
-	Gpfamilycnt            int     `json:"gpfamilycnt,omitempty" db:"gpfamilycnt"`
-	Cmpdname               string  `json:"cmpdname,omitempty" db:"cmpdname"`
-	Cmpdsynonym            string  `json:"cmpdsynonym,omitempty" db:"cmpdsynonym"`
-	Inchi                  string  `json:"inchi,omitempty" db:"inchi"`
-	Inchikey               string  `json:"inchikey,omitempty" db:"inchikey"`
-	Smiles                 string  `json:"smiles,omitempty" db:"smiles"`
-	Iupacname              string  `json:"iupacname,omitempty" db:"iupacname"`
-	Mf                     string  `json:"mf,omitempty" db:"mf"`
-	Sidsrcname             string  `json:"sidsrcname,omitempty" db:"sidsrcname"`
-	Cidcdate               string  `json:"cidcdate,omitempty" db:"cidcdate"`
-	Depcatg                string  `json:"depcatg,omitempty" db:"depcatg"`
-	Annothits              string  `json:"annothits,omitempty" db:"annothits"`
-	Exactmass              string  `json:"exactmass,omitempty" db:"exactmass"`
-	Monoisotopicmass       string  `json:"monoisotopicmass,omitempty" db:"monoisotopicmass"`
-}
-
 type SearchType struct {
 	Cid      string `json:"Cid"`
 	Smiles   string `json:"Smiles"`
@@ -199,20 +161,6 @@ type Status struct {
 	Error string `json:"error,omitempty"`
 }
 
-type SDQSet struct {
-	Status     Status     `json:"status,omitempty"`
-	InputCount int        `json:"inputCount,omitempty"`
-	TotalCount int        `json:"totalCount,omitempty"`
-	Collection string     `json:"collection,omitempty"`
-	Type       string     `json:"type,omitempty"`
-	Rows       []Compound `json:"rows,omitempty"`
-}
-
-// SDQOutputSet for search from cachekey
-type SDQOutputSet struct {
-	SDQOutputSet []SDQSet `json:"SDQOutputSet"`
-}
-
 type Parameter struct {
 	Name   string `json:"name"`
 	String string `json:"string,omitempty"`
@@ -235,4 +183,62 @@ func (v QueryBlob) toString() string {
 
 func (c Compounds) Get() {
 
+}
+
+type Compound struct {
+	Cid                    int     `json:"cid,omitempty"`
+	Mw                     float64 `json:"mw,omitempty"`
+	Polararea              float64 `json:"polararea,omitempty"`
+	Complexity             float64 `json:"complexity,omitempty"`
+	Xlogp                  float64 `json:"xlogp,omitempty"`
+	Heavycnt               int     `json:"heavycnt,omitempty"`
+	Hbonddonor             int     `json:"hbonddonor,omitempty"`
+	Hbondacc               int     `json:"hbondacc,omitempty"`
+	Rotbonds               int     `json:"rotbonds,omitempty"`
+	Annothitcnt            int     `json:"annothitcnt,omitempty"`
+	Charge                 int     `json:"charge,omitempty"`
+	Covalentunitcnt        int     `json:"covalentunitcnt,omitempty"`
+	Isotopeatomcnt         int     `json:"isotopeatomcnt,omitempty"`
+	Totalatomstereocnt     int     `json:"totalatomstereocnt,omitempty"`
+	Definedatomstereocnt   int     `json:"definedatomstereocnt,omitempty"`
+	Undefinedatomstereocnt int     `json:"undefinedatomstereocnt,omitempty"`
+	Totalbondstereocnt     int     `json:"totalbondstereocnt,omitempty"`
+	Definedbondstereocnt   int     `json:"definedbondstereocnt,omitempty"`
+	Undefinedbondstereocnt int     `json:"undefinedbondstereocnt,omitempty"`
+	Pclidcnt               int     `json:"pclidcnt,omitempty"`
+	Gpidcnt                int     `json:"gpidcnt,omitempty"`
+	Gpfamilycnt            int     `json:"gpfamilycnt,omitempty"`
+	Aids                   string  `json:"aids,omitempty"`
+	Cmpdname               string  `json:"cmpdname,omitempty"`
+	Cmpdsynonym            string  `json:"cmpdsynonym,omitempty"`
+	Inchi                  string  `json:"inchi,omitempty"`
+	Inchikey               string  `json:"inchikey,omitempty"`
+	Smiles                 string  `json:"smiles,omitempty"`
+	Iupacname              string  `json:"iupacname,omitempty"`
+	Mf                     string  `json:"mf,omitempty"`
+	Sidsrcname             string  `json:"sidsrcname,omitempty"`
+	Annotation             string  `json:"annotation,omitempty"`
+	Cidcdate               string  `json:"cidcdate,omitempty"`
+	Depcatg                string  `json:"depcatg,omitempty"`
+	Meshheadings           string  `json:"meshheadings,omitempty"`
+	Annothits              string  `json:"annothits,omitempty"`
+	Exactmass              string  `json:"exactmass,omitempty"`
+	Monoisotopicmass       string  `json:"monoisotopicmass,omitempty"`
+}
+
+type SDQSet struct {
+	Status struct {
+		Code  int    `json:"code,omitempty"`
+		Error string `json:"error,omitempty"`
+	} `json:"status"`
+	InputCount int        `json:"inputCount,omitempty"`
+	TotalCount int        `json:"totalCount,omitempty"`
+	Collection string     `json:"collection,omitempty"`
+	Type       string     `json:"type,omitempty"`
+	Rows       []Compound `json:"rows,omitempty"`
+}
+
+// SDQOutputSet for search from cachekey
+type SDQOutputSet struct {
+	SDQOutputSet []SDQSet `json:"SDQOutputSet"`
 }

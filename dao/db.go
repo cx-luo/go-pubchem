@@ -16,4 +16,3 @@ func getMysqlCursor(host string, port int, username string, passwd string, dbnam
 }
 
 var AidbCursor = getMysqlCursor("192.168.2.139", 2881, "luocx@aidb", "ABab12@#", "enotess")
-var ElnCursor = getMysqlCursor("192.168.2.139", 2881, "luocx@chemzero", "ABab12@#", "elabx")
